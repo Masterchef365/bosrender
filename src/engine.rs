@@ -5,6 +5,8 @@ use anyhow::Result;
 use crate::{Input, RenderSettings};
 use std::ffi::CString;
 
+static VERTEX_SHADER_SPV: &[u8] = include_bytes!("shaders/builtin.vert.spv");
+
 pub struct Engine {
     cfg: RenderSettings,
     pipeline: vk::Pipeline,
