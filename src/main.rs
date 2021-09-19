@@ -4,7 +4,6 @@ use structopt::StructOpt;
 use bosrender::offscreen::OffScreen;
 use bosrender::settings::Settings;
 use anyhow::{Result, Context};
-use std::path::Path;
 use std::io::BufWriter;
 use std::fs::File;
 
@@ -20,7 +19,7 @@ fn main() -> Result<()> {
 
         let path = format!("{}_{:03}.png", cfg.name, frame_idx);
 
-        write_rgba_png(cfg.width, cfg.height, &image, &path).context("Writing image")?;
+        write_rgb_png(cfg.width, cfg.height, &image, &path).context("Writing image")?;
     }
 
     println!("Finished!");
@@ -28,7 +27,7 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn write_rgba_png(width: u32, height: u32, data: &[u8], path: &str) -> Result<()> {
+fn write_rgb_png(width: u32, height: u32, data: &[u8], path: &str) -> Result<()> {
     let file = File::create(&path).with_context(|| format!("Failed to create image {}", path))?;
     let ref mut w = BufWriter::new(file);
     

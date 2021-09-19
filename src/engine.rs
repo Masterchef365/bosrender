@@ -1,5 +1,4 @@
 use watertender::prelude::*;
-use watertender::memory::UsageFlags;
 use defaults::FRAMES_IN_FLIGHT;
 use anyhow::{Result, Context};
 use crate::settings::Settings;
@@ -28,20 +27,14 @@ pub struct SceneData {
     // TODO: Add mouse in interactive mode!
 }
 
-const TEX_IMAGE_FORMAT: vk::Format = vk::Format::R8G8B8A8_SRGB;
-
 impl Engine {
     pub fn new(
         core: SharedCore, 
         cfg: Settings, 
         render_pass: vk::RenderPass,
-        command_buffer: vk::CommandBuffer
     ) -> Result<Self> {
         // Load fragment shader
         let fragment_spv = load_fragment_shader(&cfg.shader)?;
-
-        // Create staging buffer
-        let mut staging_buffer = StagingBuffer::new(core.clone())?;
 
         // Scene data
         let scene_ubo = FrameDataUbo::new(core.clone(), FRAMES_IN_FLIGHT)?;
@@ -336,6 +329,8 @@ fn load_fragment_shader(path: &Path) -> Result<Vec<u8>> {
 
     let source = doctor_source(source);
 
+    //println!("{}", source);
+
     let mut compiler = shaderc::Compiler::new().context("Could not find shaderc compiler")?;
 
     let mut options = shaderc::CompileOptions::new().unwrap();
@@ -355,17 +350,18 @@ fn load_fragment_shader(path: &Path) -> Result<Vec<u8>> {
 
 fn doctor_source(source: String) -> String {
     "#version 450
-    layout(binding = 0) uniform ___SceneData {
+    layout(binding = 0) uniform BosRenderSceneData {
         float resolution_x;
         float resolution_y;
         float u_time;
     };
-    layout(location = 0) out vec4 ___out_color;
+    layout(location = 0) out vec4 bos_render_output_color;
     vec2 u_resolution = vec2(resolution_x, resolution_y);"
     .to_string()
         + &source
             .replace("uniform vec2 u_resolution;", "")
             .replace("uniform vec2 u_mouse;", "")
             .replace("uniform float u_time;", "")
-            .replace("gl_FragColor", "___out_color")
+            .replace("gl_FragColor", "bos_render_output_color")
+
 }

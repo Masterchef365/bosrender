@@ -55,7 +55,7 @@ impl OffScreen {
         let render_pass = create_render_pass(&core)?;
 
         // Create engine
-        let engine = Engine::new(core.clone(), cfg.clone(), render_pass, command_buffer)?;
+        let engine = Engine::new(core.clone(), cfg.clone(), render_pass)?;
 
         // Create frame download staging buffer
         let fb_size_bytes = (cfg.height * cfg.width * 4) as u64 * std::mem::size_of::<u8>() as u64;

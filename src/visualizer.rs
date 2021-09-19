@@ -19,7 +19,7 @@ impl MainLoop<Settings> for Visualizer {
     fn new(core: &SharedCore, mut platform: Platform<'_>, cfg: Settings) -> Result<Self> {
         let starter_kit = StarterKit::new(core.clone(), &mut platform)?;
         let camera = MultiPlatformCamera::new(&mut platform);
-        let engine = Engine::new(core.clone(), cfg, starter_kit.render_pass, starter_kit.current_command_buffer())?;
+        let engine = Engine::new(core.clone(), cfg, starter_kit.render_pass)?;
 
         let start = Instant::now();
 
