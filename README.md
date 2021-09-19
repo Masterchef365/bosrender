@@ -8,3 +8,4 @@
 - [ ] Allow for input textures (an extension to the book of shaders)
 
 # Ideas
+* Copy code from ga1axy
