@@ -23,9 +23,12 @@ pub struct Settings {
     #[structopt(short, long, default_value = "0.01666")]
     pub rate: f32,
 
+    /*
     /// Output format. Replaces $f with the file stem of the shader path and $i with the stem of
     /// the shader path. If $f is not found in the pattern, the pattern is assumed to end with "_%f"
     #[structopt(long, value_name="pattern", default_value = "%i_%f.png")]
+    */
+    #[structopt(long, short)]
     pub name: String,
 
     /// Output directory

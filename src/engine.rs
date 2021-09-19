@@ -352,6 +352,7 @@ fn load_fragment_shader(path: &Path) -> Result<Vec<u8>> {
 
     Ok(binary_result.as_binary_u8().to_vec())
 }
+
 fn doctor_source(source: String) -> String {
     "#version 450
     layout(binding = 0) uniform ___SceneData {
