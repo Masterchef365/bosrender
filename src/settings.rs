@@ -34,4 +34,8 @@ pub struct Settings {
 
     /// Fragment shader path
     pub shader: PathBuf,
+
+    /// Enable validation layers
+    #[structopt(long)]
+    pub validation: bool
 }

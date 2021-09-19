@@ -1,14 +1,14 @@
 use watertender::prelude::*;
 use watertender::memory::UsageFlags;
 use defaults::FRAMES_IN_FLIGHT;
-use anyhow::Result;
-use crate::{Input, RenderSettings};
+use anyhow::{Result, Context};
+use crate::settings::Settings;
 use std::ffi::CString;
 
 static VERTEX_SHADER_SPV: &[u8] = include_bytes!("shaders/builtin.vert.spv");
 
 pub struct Engine {
-    cfg: RenderSettings,
+    cfg: Settings,
     pipeline: vk::Pipeline,
     pipeline_layout: vk::PipelineLayout,
     scene_ubo: FrameDataUbo<SceneData>,
@@ -32,25 +32,16 @@ const TEX_IMAGE_FORMAT: vk::Format = vk::Format::R8G8B8A8_SRGB;
 impl Engine {
     pub fn new(
         core: SharedCore, 
-        cfg: RenderSettings, 
+        cfg: Settings, 
         render_pass: vk::RenderPass,
         command_buffer: vk::CommandBuffer
     ) -> Result<Self> {
+        // Load fragment shader
+        let fragment_spv = std::fs::read(&cfg.shader)
+            .with_context(|| format!("Failed to find shader at \"{}\"", cfg.shader.display()))?;
+
         // Create staging buffer
         let mut staging_buffer = StagingBuffer::new(core.clone())?;
-
-        // Create instance buffer
-        let instance_buffer_size = (cfg.input_points * 4) as usize * std::mem::size_of::<f32>();
-        let bi = vk::BufferCreateInfoBuilder::new()
-            .sharing_mode(vk::SharingMode::EXCLUSIVE)
-            .usage(vk::BufferUsageFlags::VERTEX_BUFFER)
-            .size(instance_buffer_size as _);
-
-        let instances = ManagedBuffer::new(
-            core.clone(),
-            bi,
-            UsageFlags::UPLOAD,
-        )?;
 
         // Scene data
         let scene_ubo = FrameDataUbo::new(core.clone(), FRAMES_IN_FLIGHT)?;
@@ -141,8 +132,8 @@ impl Engine {
         // Pipeline
         let pipeline = shader(
             &core,
-            &std::fs::read("shaders/unlit.vert.spv")?,
-            &std::fs::read("shaders/unlit.frag.spv")?,
+            VERTEX_SHADER_SPV,
+            &fragment_spv,
             vk::PrimitiveTopology::TRIANGLE_LIST,
             render_pass,
             pipeline_layout,
@@ -189,8 +180,8 @@ impl Engine {
         Ok(())
     }
 
-    pub fn cfg(&self) -> RenderSettings {
-        self.cfg
+    pub fn cfg(&self) -> &Settings {
+        &self.cfg
     }
 }
 

@@ -1,6 +1,6 @@
 use watertender::prelude::*;
 use anyhow::Result;
-use crate::{Input, RenderSettings, engine::{Engine, SceneData}};
+use crate::{settings::Settings, engine::{Engine, SceneData}};
 use std::time::Instant;
 
 struct Visualizer {
@@ -10,16 +10,16 @@ struct Visualizer {
     start: Instant,
 }
 
-pub fn visualize(input: Input, cfg: RenderSettings, vr: bool, validation: bool) -> Result<()> {
-    let info = AppInfo::default().validation(validation);
-    launch::<Visualizer, RenderSettings>(info, vr, cfg)
+pub fn visualize(cfg: Settings, vr: bool) -> Result<()> {
+    let info = AppInfo::default().validation(cfg.validation);
+    launch::<Visualizer, Settings>(info, vr, cfg)
 }
 
-impl MainLoop<RenderSettings> for Visualizer {
-    fn new(core: &SharedCore, mut platform: Platform<'_>, cfg: RenderSettings) -> Result<Self> {
+impl MainLoop<Settings> for Visualizer {
+    fn new(core: &SharedCore, mut platform: Platform<'_>, cfg: Settings) -> Result<Self> {
         let starter_kit = StarterKit::new(core.clone(), &mut platform)?;
         let camera = MultiPlatformCamera::new(&mut platform);
-        let mut engine = Engine::new(core.clone(), cfg, starter_kit.render_pass, starter_kit.current_command_buffer())?;
+        let engine = Engine::new(core.clone(), cfg, starter_kit.render_pass, starter_kit.current_command_buffer())?;
 
         let start = Instant::now();
 
@@ -40,7 +40,8 @@ impl MainLoop<RenderSettings> for Visualizer {
         let cmd = self.starter_kit.begin_command_buffer(frame)?;
         let command_buffer = cmd.command_buffer;
 
-        let (ret, cameras) = self.camera.get_matrices(&platform)?;
+        // TODO: Remove me!
+        let (ret, _) = self.camera.get_matrices(&platform)?;
 
         let extent = self.starter_kit.framebuffer.extent();
 
@@ -73,7 +74,7 @@ impl MainLoop<RenderSettings> for Visualizer {
     }
 }
 
-impl SyncMainLoop<RenderSettings> for Visualizer {
+impl SyncMainLoop<Settings> for Visualizer {
     fn winit_sync(&self) -> (vk::Semaphore, vk::Semaphore) {
         self.starter_kit.winit_sync()
     }

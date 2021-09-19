@@ -1,5 +1,5 @@
 use anyhow::Result;
-use crate::{RenderSettings, Input, engine::{Engine, SceneData}};
+use crate::{settings::Settings, engine::{Engine, SceneData}};
 use watertender::defaults::DEPTH_FORMAT;
 use watertender::headless_backend::build_core;
 use watertender::memory::{UsageFlags, ManagedImage, ManagedBuffer};
@@ -7,7 +7,7 @@ use watertender::app_info::AppInfo;
 use watertender::{vk, SharedCore, Core};
 use std::sync::Arc;
 
-pub struct Trainer {
+pub struct OffScreen {
     command_buffer: vk::CommandBuffer,
     command_pool: vk::CommandPool,
     render_pass: vk::RenderPass,
@@ -27,10 +27,10 @@ pub struct Trainer {
 
 const COLOR_FORMAT: vk::Format = vk::Format::R8G8B8A8_SRGB;
 
-impl Trainer {
-    pub fn new(cfg: RenderSettings) -> Result<Self> {
+impl OffScreen {
+    pub fn new(cfg: Settings) -> Result<Self> {
         let info = AppInfo::default()
-            .validation(cfg!(debug_assertions))
+            .validation(cfg.validation)
             .vk_version(1, 1, 0);
         let core = build_core(info)?;
         let core = Arc::new(core);
@@ -55,10 +55,10 @@ impl Trainer {
         let render_pass = create_render_pass(&core)?;
 
         // Create engine
-        let engine = Engine::new(core.clone(), cfg, render_pass, command_buffer)?;
+        let engine = Engine::new(core.clone(), cfg.clone(), render_pass, command_buffer)?;
 
         // Create frame download staging buffer
-        let fb_size_bytes = (cfg.output_height * cfg.output_width * 4) as u64 * std::mem::size_of::<u8>() as u64;
+        let fb_size_bytes = (cfg.height * cfg.width * 4) as u64 * std::mem::size_of::<u8>() as u64;
         let bi = vk::BufferCreateInfoBuilder::new()
             .sharing_mode(vk::SharingMode::EXCLUSIVE)
             .usage(vk::BufferUsageFlags::TRANSFER_DST)
@@ -72,8 +72,8 @@ impl Trainer {
 
         // Output extent
         let fb_extent = vk::Extent2DBuilder::new()
-            .width(cfg.output_width)
-            .height(cfg.output_height)
+            .width(cfg.width)
+            .height(cfg.height)
             .build();
 
         // Create depth image
@@ -198,7 +198,14 @@ impl Trainer {
         })
     }
 
-    pub fn frame(&mut self, scene: &SceneData) -> Result<Vec<u8>> {
+    pub fn frame(&mut self, time: f32) -> Result<Vec<u8>> {
+        let cfg = self.engine.cfg();
+        let scene = SceneData {
+            resolution_x: cfg.width as f32,
+            resolution_y: cfg.height as f32,
+            time,
+        };
+
         // Record command buffer to upload to gpu_buffer
         unsafe {
             self
@@ -436,7 +443,7 @@ pub fn create_render_pass(core: &Core) -> Result<vk::RenderPass> {
     Ok(unsafe { device.create_render_pass(&create_info, None, None) }.result()?)
 }
 
-impl Drop for Trainer {
+impl Drop for OffScreen {
     fn drop(&mut self) {
         unsafe {
             self.core.device.destroy_command_pool(Some(self.command_pool), None);
