@@ -1,35 +1,33 @@
 use watertender::prelude::*;
 use anyhow::Result;
-use crate::{Input, RenderSettings, engine::Engine};
+use crate::{Input, RenderSettings, engine::{Engine, SceneData}};
+use std::time::Instant;
 
 struct Visualizer {
     engine: Engine,
     camera: MultiPlatformCamera,
     starter_kit: StarterKit,
+    start: Instant,
 }
 
-type RenderInputs = (Input, RenderSettings);
-
-pub fn visualize(input: Input, cfg: RenderSettings, vr: bool) -> Result<()> {
-    crate::verify_input(&input, &cfg)?;
-    let info = AppInfo::default().validation(true);
-    launch::<Visualizer, RenderInputs>(info, vr, (input, cfg))
+pub fn visualize(input: Input, cfg: RenderSettings, vr: bool, validation: bool) -> Result<()> {
+    let info = AppInfo::default().validation(validation);
+    launch::<Visualizer, RenderSettings>(info, vr, cfg)
 }
 
-
-impl MainLoop<RenderInputs> for Visualizer {
-    fn new(core: &SharedCore, mut platform: Platform<'_>, (input, cfg): RenderInputs) -> Result<Self> {
+impl MainLoop<RenderSettings> for Visualizer {
+    fn new(core: &SharedCore, mut platform: Platform<'_>, cfg: RenderSettings) -> Result<Self> {
         let starter_kit = StarterKit::new(core.clone(), &mut platform)?;
         let camera = MultiPlatformCamera::new(&mut platform);
         let mut engine = Engine::new(core.clone(), cfg, starter_kit.render_pass, starter_kit.current_command_buffer())?;
 
-        engine.upload(0, &input)?;
-        engine.prepare(starter_kit.current_command_buffer())?;
+        let start = Instant::now();
 
         Ok(Self {
             camera,
             starter_kit,
             engine,
+            start,
         })
     }
 
@@ -44,7 +42,15 @@ impl MainLoop<RenderInputs> for Visualizer {
 
         let (ret, cameras) = self.camera.get_matrices(&platform)?;
 
-        self.engine.write_commands(command_buffer, self.starter_kit.frame, cameras)?;
+        let extent = self.starter_kit.framebuffer.extent();
+
+        let scene = SceneData {
+            resolution_x: extent.width as f32,
+            resolution_y: extent.height as f32,
+            time: self.start.elapsed().as_secs_f32(),
+        };
+
+        self.engine.write_commands(command_buffer, self.starter_kit.frame, &scene)?;
 
         self.starter_kit.end_command_buffer(cmd)?;
 
@@ -67,7 +73,7 @@ impl MainLoop<RenderInputs> for Visualizer {
     }
 }
 
-impl SyncMainLoop<RenderInputs> for Visualizer {
+impl SyncMainLoop<RenderSettings> for Visualizer {
     fn winit_sync(&self) -> (vk::Semaphore, vk::Semaphore) {
         self.starter_kit.winit_sync()
     }

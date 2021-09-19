@@ -1,13 +1,11 @@
 use anyhow::Result;
-use crate::{RenderSettings, Input, Output, engine::Engine};
+use crate::{RenderSettings, Input, engine::{Engine, SceneData}};
 use watertender::defaults::DEPTH_FORMAT;
 use watertender::headless_backend::build_core;
 use watertender::memory::{UsageFlags, ManagedImage, ManagedBuffer};
 use watertender::app_info::AppInfo;
 use watertender::{vk, SharedCore, Core};
 use std::sync::Arc;
-use nalgebra::{Matrix4, Point3, Vector3};
-use rand::Rng;
 
 pub struct Trainer {
     command_buffer: vk::CommandBuffer,
@@ -25,15 +23,6 @@ pub struct Trainer {
 
     engine: Engine,
     core: SharedCore,
-}
-
-fn random_arcball(rng: &mut impl Rng) -> Matrix4<f32> {
-    use std::f32::consts::{PI, FRAC_PI_2};
-    let pitch = rng.gen_range(-FRAC_PI_2..FRAC_PI_2);
-    let yaw = rng.gen_range(-PI..PI);
-    let distance = rng.gen_range(2.0..8.0);
-    let fov = PI / 3.;
-    arcball(pitch, yaw, distance, fov)
 }
 
 const COLOR_FORMAT: vk::Format = vk::Format::R8G8B8A8_SRGB;
@@ -209,30 +198,7 @@ impl Trainer {
         })
     }
 
-    pub fn frame(&mut self, input: &Input) -> Result<Output> {
-        let mut output = vec![];
-        let cfg = self.engine.cfg();
-
-        for frame in 0..cfg.batch_size as usize {
-            output.extend(self.single_frame(frame, input)?);
-        }
-
-        Ok(Output {
-            images: output
-        })
-    }
-
-    /*fn single_frame(&self, point_data: &[f32], image_data: &[u8]) -> Result<Vec<u8>> {
-        self.
-    }*/
-
-    fn single_frame(&mut self, idx: usize, input: &Input) -> Result<Vec<u8>> {
-        self.engine.upload(idx, input)?;
-        self.engine.prepare(self.command_buffer)?;
-
-        let mut rng = rand::thread_rng();
-        let camera = random_arcball(&mut rng);
-
+    pub fn frame(&mut self, scene: &SceneData) -> Result<Vec<u8>> {
         // Record command buffer to upload to gpu_buffer
         unsafe {
             self
@@ -327,9 +293,7 @@ impl Trainer {
                 .device
                 .cmd_set_scissor(self.command_buffer, 0, &scissors);
 
-            let mut camera_data = [0.; 4 * 4 * 2];
-            camera_data[..4*4].copy_from_slice(camera.as_slice());
-            self.engine.write_commands(self.command_buffer, 0, camera_data)?;
+            self.engine.write_commands(self.command_buffer, 0, &scene)?;
 
             self.core.device.cmd_end_render_pass(self.command_buffer);
 
@@ -469,18 +433,6 @@ pub fn create_render_pass(core: &Core) -> Result<vk::RenderPass> {
         .subpasses(&subpasses)
         .dependencies(&dependencies);
 
-    /*
-    let views = 1;
-    let view_mask = [!(!0 << views)];
-    let mut multiview = erupt::vk1_1::RenderPassMultiviewCreateInfoBuilder::new()
-        .view_masks(&view_mask)
-        .correlation_masks(&view_mask)
-        .build();
-
-    create_info.p_next = &mut multiview as *mut _ as _;
-    */
-
-
     Ok(unsafe { device.create_render_pass(&create_info, None, None) }.result()?)
 }
 
@@ -494,21 +446,4 @@ impl Drop for Trainer {
             self.core.device.destroy_image_view(Some(self.fb_depth_image_view), None);
         }
     }
-}
-
-fn arcball(pitch: f32, yaw: f32, distance: f32, fov: f32) -> Matrix4<f32> {
-    let eye = Point3::new(
-        yaw.cos() * pitch.cos() * distance,
-        pitch.sin() * distance,
-        yaw.sin() * pitch.cos() * distance,
-    );
-
-    let view = Matrix4::look_at_rh(&eye, &Point3::origin(), &Vector3::y());
-    let projection = Matrix4::new_perspective(
-        1.,
-        fov,
-        0.001,
-        1000.,
-    );
-    projection * view
 }
