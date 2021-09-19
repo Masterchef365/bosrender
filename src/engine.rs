@@ -4,6 +4,7 @@ use defaults::FRAMES_IN_FLIGHT;
 use anyhow::{Result, Context};
 use crate::settings::Settings;
 use std::ffi::CString;
+use std::path::Path;
 
 static VERTEX_SHADER_SPV: &[u8] = include_bytes!("shaders/builtin.vert.spv");
 
@@ -37,8 +38,7 @@ impl Engine {
         command_buffer: vk::CommandBuffer
     ) -> Result<Self> {
         // Load fragment shader
-        let fragment_spv = std::fs::read(&cfg.shader)
-            .with_context(|| format!("Failed to find shader at \"{}\"", cfg.shader.display()))?;
+        let fragment_spv = load_fragment_shader(&cfg.shader)?;
 
         // Create staging buffer
         let mut staging_buffer = StagingBuffer::new(core.clone())?;
@@ -329,4 +329,42 @@ impl Drop for Engine {
             self.core.device.destroy_descriptor_set_layout(Some(self.descriptor_set_layout), None);
         }
     }
+}
+
+fn load_fragment_shader(path: &Path) -> Result<Vec<u8>> {
+    let source = std::fs::read_to_string(path).with_context(|| format!("Failed to find shader source at \"{}\"", path.display()))?;
+
+    let source = doctor_source(source);
+
+    let mut compiler = shaderc::Compiler::new().context("Could not find shaderc compiler")?;
+
+    let mut options = shaderc::CompileOptions::new().unwrap();
+    options.add_macro_definition("EP", Some("main"));
+
+    let binary_result = compiler.compile_into_spirv(
+        &source, 
+        shaderc::ShaderKind::Fragment,
+        path.to_str().expect("Non-utf8 shader name"), 
+        "main", 
+        Some(&options)
+    )
+    .context("Failed to compile shader")?;
+
+    Ok(binary_result.as_binary_u8().to_vec())
+}
+fn doctor_source(source: String) -> String {
+    "#version 450
+    layout(binding = 0) uniform ___SceneData {
+        float resolution_x;
+        float resolution_y;
+        float u_time;
+    };
+    layout(location = 0) out vec4 ___out_color;
+    vec2 u_resolution = vec2(resolution_x, resolution_y);"
+    .to_string()
+        + &source
+            .replace("uniform vec2 u_resolution;", "")
+            .replace("uniform vec2 u_mouse;", "")
+            .replace("uniform float u_time;", "")
+            .replace("gl_FragColor", "___out_color")
 }
