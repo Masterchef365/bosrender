@@ -23,6 +23,8 @@ fn main() -> Result<()> {
         write_rgba_png(cfg.width, cfg.height, &image, &path).context("Writing image")?;
     }
 
+    println!("Finished!");
+
     Ok(())
 }
 

@@ -25,16 +25,17 @@ impl Iterator for FrameCounter {
     fn next(&mut self) -> Option<Self::Item> {
         let ret = self.idx;
         if ret == self.n {
+            println!();
             return None;
         }
 
         let time = Instant::now();
 
         print!("\r");
-        print!("Frame {}/{}, ", ret + 1, self.n);
+        print!("Frame {}/{}", ret + 1, self.n);
 
         if let Some(last_time) = self.last_time.take() {
-            print!("Last frame time: {} ms", time.duration_since(last_time).as_millis());
+            print!(", Last frame time: {} ms", time.duration_since(last_time).as_millis());
         }
 
         std::io::stdout().flush().expect("Stdout error");
