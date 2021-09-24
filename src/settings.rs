@@ -19,6 +19,10 @@ pub struct Settings {
     #[structopt(short, long, default_value = "1")]
     pub frames: usize, // TODO: Maybe this should be a list of ranges...
 
+    /// Number of frames to render. Infinite if 0
+    #[structopt(short = "l", long, default_value = "3")]
+    pub frames_in_flight: usize, // TODO: Maybe this should be a list of ranges...
+
     /// How much to increment `anim` by each frame
     #[structopt(short, long, default_value = "0.01666")]
     pub rate: f32,

@@ -21,7 +21,6 @@ struct Frame {
 }
 
 pub struct OffScreen {
-    command_buffer: vk::CommandBuffer,
     command_pool: vk::CommandPool,
     render_pass: vk::RenderPass,
 
@@ -30,6 +29,7 @@ pub struct OffScreen {
     fb_size_bytes: u64,
     frame_indices_in_flight: VecDeque<usize>,
     available_indices: Vec<usize>,
+    command_buffers: Vec<vk::CommandBuffer>,
 
     engine: Engine,
     core: SharedCore,
@@ -38,7 +38,7 @@ pub struct OffScreen {
 const COLOR_FORMAT: vk::Format = vk::Format::R8G8B8A8_SRGB;
 
 impl OffScreen {
-    pub fn new(cfg: Settings, frames_in_flight: usize) -> Result<Self> {
+    pub fn new(cfg: Settings) -> Result<Self> {
         let info = AppInfo::default()
             .validation(cfg.validation)
             .vk_version(1, 1, 0);
@@ -56,10 +56,10 @@ impl OffScreen {
         let allocate_info = vk::CommandBufferAllocateInfoBuilder::new()
             .command_pool(command_pool)
             .level(vk::CommandBufferLevel::PRIMARY)
-            .command_buffer_count(1);
+            .command_buffer_count(cfg.frames_in_flight as _);
 
-        let command_buffer =
-            unsafe { core.device.allocate_command_buffers(&allocate_info) }.result()?[0];
+        let command_buffers =
+            unsafe { core.device.allocate_command_buffers(&allocate_info) }.result()?;
 
         // Create render pass
         let render_pass = create_render_pass(&core)?;
@@ -78,7 +78,7 @@ impl OffScreen {
 
         // Frames in flight
         let mut frames = vec![];
-        for frame_idx in 0..frames_in_flight {
+        for _ in 0..cfg.frames_in_flight {
             // Create frame download staging buffer
             let bi = vk::BufferCreateInfoBuilder::new()
                 .sharing_mode(vk::SharingMode::EXCLUSIVE)
@@ -204,9 +204,9 @@ impl OffScreen {
             fb_extent,
             fb_size_bytes,
             frame_indices_in_flight: VecDeque::new(),
-            available_indices: (0..frames_in_flight).collect(),
+            available_indices: (0..cfg.frames_in_flight).collect(),
             core,
-            command_buffer,
+            command_buffers,
             command_pool,
             engine,
         })
@@ -223,17 +223,18 @@ impl OffScreen {
         let frame_idx = self.available_indices.pop().expect("No more frames in flight left. Perhaps you didn't download a frame?");
 
         let frame = &self.frames[frame_idx];
+        let command_buffer = self.command_buffers[frame_idx];
 
         // Record command buffer to upload to gpu_buffer
         unsafe {
             self.core
                 .device
-                .reset_command_buffer(self.command_buffer, None)
+                .reset_command_buffer(command_buffer, None)
                 .result()?;
             let begin_info = vk::CommandBufferBeginInfoBuilder::new();
             self.core
                 .device
-                .begin_command_buffer(self.command_buffer, &begin_info)
+                .begin_command_buffer(command_buffer, &begin_info)
                 .result()?;
 
             // Barrier (UNDEFINED -> TRANSFER_DST_OPTIMAL)
@@ -256,7 +257,7 @@ impl OffScreen {
                 .subresource_range(image_subresource);
 
             self.core.device.cmd_pipeline_barrier(
-                self.command_buffer,
+                command_buffer,
                 vk::PipelineStageFlags::TOP_OF_PIPE,
                 vk::PipelineStageFlags::ALL_GRAPHICS,
                 None,
@@ -290,7 +291,7 @@ impl OffScreen {
                 .clear_values(&clear_values);
 
             self.core.device.cmd_begin_render_pass(
-                self.command_buffer,
+                command_buffer,
                 &begin_info,
                 vk::SubpassContents::INLINE,
             );
@@ -309,15 +310,15 @@ impl OffScreen {
 
             self.core
                 .device
-                .cmd_set_viewport(self.command_buffer, 0, &viewports);
+                .cmd_set_viewport(command_buffer, 0, &viewports);
 
             self.core
                 .device
-                .cmd_set_scissor(self.command_buffer, 0, &scissors);
+                .cmd_set_scissor(command_buffer, 0, &scissors);
 
-            self.engine.write_commands(self.command_buffer, 0, &scene)?;
+            self.engine.write_commands(command_buffer, frame_idx, &scene)?;
 
-            self.core.device.cmd_end_render_pass(self.command_buffer);
+            self.core.device.cmd_end_render_pass(command_buffer);
 
             // Barrier (UNDEFINED -> TRANSFER_DST_OPTIMAL)
             let barrier = vk::ImageMemoryBarrierBuilder::new()
@@ -331,7 +332,7 @@ impl OffScreen {
                 .subresource_range(image_subresource);
 
             self.core.device.cmd_pipeline_barrier(
-                self.command_buffer,
+                command_buffer,
                 vk::PipelineStageFlags::ALL_GRAPHICS,
                 vk::PipelineStageFlags::BOTTOM_OF_PIPE,
                 None,
@@ -362,7 +363,7 @@ impl OffScreen {
                 .image_subresource(*sub_layers);
 
             self.core.device.cmd_copy_image_to_buffer(
-                self.command_buffer,
+                command_buffer,
                 frame.fb_image.instance(),
                 vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
                 frame.fb_download_buf.instance(),
@@ -372,9 +373,9 @@ impl OffScreen {
             // Submit & wait
             self.core
                 .device
-                .end_command_buffer(self.command_buffer)
+                .end_command_buffer(command_buffer)
                 .result()?;
-            let command_buffers = [self.command_buffer];
+            let command_buffers = [command_buffer];
             let submit_info = vk::SubmitInfoBuilder::new().command_buffers(&command_buffers);
             self.core
                 .device
@@ -392,9 +393,6 @@ impl OffScreen {
 
         let frame = &mut self.frames[frame_idx];
         
-        let mut image_data = vec![0xFFu8; self.fb_size_bytes as usize];
-        frame.fb_download_buf.read_bytes(0, &mut image_data)?;
-
         unsafe {
             self.core.device.wait_for_fences(
                 &[frame.fence], 
@@ -402,6 +400,9 @@ impl OffScreen {
                 Duration::from_secs(5).as_nanos() as _
             ).result()?
         }
+
+        let mut image_data = vec![0xFFu8; self.fb_size_bytes as usize];
+        frame.fb_download_buf.read_bytes(0, &mut image_data)?;
 
         self.available_indices.push(frame_idx);
 

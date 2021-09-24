@@ -12,7 +12,7 @@ fn main() -> Result<()> {
 
     let frames_in_flight = 3;
 
-    let mut engine = OffScreen::new(cfg.clone(), frames_in_flight)?;
+    let mut engine = OffScreen::new(cfg.clone())?;
 
     let frame_idx_to_time = |frame_idx| cfg.rate * (frame_idx + cfg.first_frame) as f32;
 

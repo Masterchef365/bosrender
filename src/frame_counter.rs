@@ -6,7 +6,7 @@ pub struct FrameCounter {
     last_time: Option<Instant>,
     idx: usize,
     n: usize,
-
+    
 }
 
 impl FrameCounter {
