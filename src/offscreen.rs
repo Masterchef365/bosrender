@@ -375,6 +375,7 @@ impl OffScreen {
                 .device
                 .end_command_buffer(command_buffer)
                 .result()?;
+            self.core.device.reset_fences(&[frame.fence]).result()?;
             let command_buffers = [command_buffer];
             let submit_info = vk::SubmitInfoBuilder::new().command_buffers(&command_buffers);
             self.core
@@ -383,13 +384,13 @@ impl OffScreen {
                 .result()?;
         }
 
-        self.frame_indices_in_flight.push_front(frame_idx);
+        self.frame_indices_in_flight.push_back(frame_idx);
 
         Ok(())
     }
 
     pub fn download_frame(&mut self) -> Result<Vec<u8>> {
-        let frame_idx = self.frame_indices_in_flight.pop_back().expect("Attempted to download a frame we have not finished...");
+        let frame_idx = self.frame_indices_in_flight.pop_front().expect("Attempted to download a frame we have not finished...");
 
         let frame = &mut self.frames[frame_idx];
         
