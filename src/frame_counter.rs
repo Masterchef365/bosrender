@@ -6,6 +6,7 @@ pub struct FrameCounter {
     last_time: Option<Instant>,
     idx: usize,
     n: usize,
+
 }
 
 impl FrameCounter {
@@ -32,10 +33,11 @@ impl Iterator for FrameCounter {
         let time = Instant::now();
 
         print!("\r");
-        print!("Frame {}/{}", ret + 1, self.n);
+        print!("Frame {:>4}/{}", ret + 1, self.n);
 
         if let Some(last_time) = self.last_time.take() {
-            print!(", Last frame time: {} ms", time.duration_since(last_time).as_millis());
+            let frame_time = time.duration_since(last_time);
+            print!(", Last frame time: {} ms", frame_time.as_millis());
         }
 
         std::io::stdout().flush().expect("Stdout error");

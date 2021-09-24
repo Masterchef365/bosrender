@@ -10,16 +10,26 @@ use std::fs::File;
 fn main() -> Result<()> {
     let cfg = Settings::from_args();
 
-    let mut engine = OffScreen::new(cfg.clone())?;
+    let frames_in_flight = 3;
+
+    let mut engine = OffScreen::new(cfg.clone(), frames_in_flight)?;
+
+    let frame_idx_to_time = |frame_idx| cfg.rate * (frame_idx + cfg.first_frame) as f32;
+
+    for frame_idx in 0..frames_in_flight {
+        engine.submit(frame_idx_to_time(frame_idx))?;
+    }
 
     for frame_idx in FrameCounter::new(cfg.frames) {
-        let time = cfg.rate * (frame_idx + cfg.first_frame) as f32;
+        let image = engine.download_frame().with_context(|| format!("Downloading frame {}", frame_idx))?;
 
-        let image = engine.frame(time).with_context(|| format!("Rendering frame {}", frame_idx))?;
-
-        let path = format!("{}_{:03}.png", cfg.name, frame_idx + cfg.first_frame);
+        let path = format!("{}_{:04}.png", cfg.name, frame_idx + cfg.first_frame);
 
         write_rgb_png(cfg.width, cfg.height, &image, &path).context("Writing image")?;
+
+        let next_frame_idx = frame_idx + frames_in_flight;
+
+        engine.submit(frame_idx_to_time(next_frame_idx))?;
     }
 
     println!("Finished!");

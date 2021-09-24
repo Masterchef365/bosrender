@@ -6,6 +6,7 @@
     * 2D transform matrix (2x3)
 - [x] ~~Ffmpeg/raw frame interface from stdout~~ turns out this sucks
 - [ ] Allow for input textures (an extension to the book of shaders)
+- [ ] Multiple frames in flight (to better utilize the GPU)
 
 # Ideas
 * Copy code from ga1axy
