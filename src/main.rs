@@ -12,12 +12,12 @@ fn main() -> Result<()> {
 
     let mut engine = OffScreen::new(cfg.clone())?;
 
-    for frame_idx in FrameCounter::new(cfg.frames as _) {
-        let time = cfg.rate * (frame_idx + cfg.first_frame as usize) as f32;
+    for frame_idx in FrameCounter::new(cfg.frames) {
+        let time = cfg.rate * (frame_idx + cfg.first_frame) as f32;
 
         let image = engine.frame(time).with_context(|| format!("Rendering frame {}", frame_idx))?;
 
-        let path = format!("{}_{:03}.png", cfg.name, frame_idx);
+        let path = format!("{}_{:03}.png", cfg.name, frame_idx + cfg.first_frame);
 
         write_rgb_png(cfg.width, cfg.height, &image, &path).context("Writing image")?;
     }

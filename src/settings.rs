@@ -13,11 +13,11 @@ pub struct Settings {
 
     /// First frame to render
     #[structopt(long, default_value = "0")]
-    pub first_frame: u32, // TODO: Maybe this should be a list of ranges...
+    pub first_frame: usize, // TODO: Maybe this should be a list of ranges...
 
     /// Number of frames to render. Infinite if 0
     #[structopt(short, long, default_value = "1")]
-    pub frames: u32, // TODO: Maybe this should be a list of ranges...
+    pub frames: usize, // TODO: Maybe this should be a list of ranges...
 
     /// How much to increment `anim` by each frame
     #[structopt(short, long, default_value = "0.01666")]
