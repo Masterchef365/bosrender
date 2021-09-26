@@ -16,10 +16,12 @@ fn main() -> Result<()> {
 
     let frame_idx_to_time = |frame_idx| cfg.rate * (frame_idx + cfg.first_frame) as f32;
 
+    // Submit `frames_in_flight` frames for rendering
     for frame_idx in 0..frames_in_flight {
         engine.submit(frame_idx_to_time(frame_idx))?;
     }
 
+    // Download each frame
     for frame_idx in FrameCounter::new(cfg.frames) {
         let image = engine.download_frame().with_context(|| format!("Downloading frame {}", frame_idx))?;
 
@@ -29,7 +31,10 @@ fn main() -> Result<()> {
 
         let next_frame_idx = frame_idx + frames_in_flight;
 
-        engine.submit(frame_idx_to_time(next_frame_idx))?;
+        // If we're not going to be finished soon, queue up another frame
+        if cfg.frames - frame_idx > frames_in_flight {
+            engine.submit(frame_idx_to_time(next_frame_idx))?;
+        }
     }
 
     println!("Finished!");

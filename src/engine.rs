@@ -207,19 +207,10 @@ pub fn shader(
     }
     .result()?;
 
-    let vert_attrib_desc = Vertex::get_attribute_descriptions();
-    let attribute_descriptions = [
-        vert_attrib_desc[0],
-        vert_attrib_desc[1],
-    ];
-    let binding_descriptions = [
-        Vertex::binding_description(),
-    ];
-
     // Build pipeline
     let vertex_input = vk::PipelineVertexInputStateCreateInfoBuilder::new()
-        .vertex_attribute_descriptions(&attribute_descriptions[..])
-        .vertex_binding_descriptions(&binding_descriptions);
+        .vertex_attribute_descriptions(&[])
+        .vertex_binding_descriptions(&[]);
 
     let input_assembly = vk::PipelineInputAssemblyStateCreateInfoBuilder::new()
         .topology(primitive)
@@ -317,8 +308,11 @@ pub fn shader(
 impl Drop for Engine {
     fn drop(&mut self) {
         unsafe {
+            self.core.device.device_wait_idle().unwrap();
             self.core.device.destroy_descriptor_pool(Some(self.descriptor_pool), None);
             self.core.device.destroy_descriptor_set_layout(Some(self.descriptor_set_layout), None);
+            self.core.device.destroy_pipeline_layout(Some(self.pipeline_layout), None);
+            self.core.device.destroy_pipeline(Some(self.pipeline), None);
         }
     }
 }
