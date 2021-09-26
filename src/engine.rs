@@ -317,6 +317,7 @@ impl Drop for Engine {
     }
 }
 
+#[cfg(feature = "shaderc")]
 fn load_fragment_shader(path: &Path) -> Result<Vec<u8>> {
     let source = std::fs::read_to_string(path).with_context(|| format!("Failed to find shader source at \"{}\"", path.display()))?;
 
@@ -339,6 +340,11 @@ fn load_fragment_shader(path: &Path) -> Result<Vec<u8>> {
     .context("Failed to compile shader")?;
 
     Ok(binary_result.as_binary_u8().to_vec())
+}
+
+#[cfg(not(feature = "shaderc"))]
+fn load_fragment_shader(path: &Path) -> Result<Vec<u8>> {
+    Ok(std::fs::read(path)?)
 }
 
 fn doctor_source(source: String) -> String {
