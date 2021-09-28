@@ -6,12 +6,8 @@ use bosrender::settings::Settings;
 use anyhow::{Result, Context};
 use std::io::BufWriter;
 use std::fs::File;
+use std::collections::VecDeque;
 
-fn main() -> Result<()> {
-    todo!()
-}
-
-/*
 fn main() -> Result<()> {
     let cfg = Settings::from_args();
 
@@ -19,26 +15,81 @@ fn main() -> Result<()> {
 
     let mut engine = OffScreen::new(cfg.clone())?;
 
-    let frame_idx_to_time = |frame_idx| cfg.rate * (frame_idx + cfg.first_frame) as f32;
+    let (tile_width, tile_height) = bosrender::offscreen::calc_tile_dims(&cfg);
 
-    // Submit `frames_in_flight` frames for rendering
-    for frame_idx in 0..frames_in_flight {
-        engine.submit(frame_idx_to_time(frame_idx))?;
+    let work_order: Vec<((usize, usize), f32, usize)> = (cfg.first_frame..).take(cfg.frames).map(|frame_idx| {
+        let time = cfg.rate * (frame_idx + cfg.first_frame) as f32;
+        bosrender::tiles::tiles(
+            (cfg.width as _, cfg.height as _),
+            (tile_width as _, tile_height as _),
+        )
+        .into_iter()
+        .map(move |pos| (pos, time, frame_idx))
+    })
+    .flatten()
+    .collect();
+
+    let mut work_order = work_order.into_iter();
+
+    // Submit `frames_in_flight` frames to prime the engine
+    let mut tile_tracker = VecDeque::new();
+    for (pos, time, frame_idx) in work_order.by_ref().take(cfg.frames_in_flight) {
+        engine.submit_tile(time, pos.0 as _, pos.1 as _)?;
+        tile_tracker.push_back((pos, frame_idx));
     }
 
     // Download each frame
-    for frame_idx in FrameCounter::new(cfg.frames) {
-        let image = engine.download_frame().with_context(|| format!("Downloading frame {}", frame_idx))?;
+    let mut last_frame_idx = cfg.first_frame;
+    let mut current_image = vec![0; (cfg.width * cfg.height * 3) as usize];
 
-        let path = format!("{}_{:04}.png", cfg.name, frame_idx + cfg.first_frame);
+    loop {
+        // Download the most recently rendered tile
+        let tile_data = engine.download_frame().context("Downloading frame")?;
+        let tile_info = tile_tracker.pop_front();
 
-        write_rgb_png(cfg.width, cfg.height, &image, &path).context("Writing image")?;
+        dbg!(tile_info, last_frame_idx);
 
-        let next_frame_idx = frame_idx + frames_in_flight;
+        let finish_frame = match tile_info {
+            Some((_, frame_idx)) => {
+                if frame_idx != last_frame_idx {
+                    let finish_frame = last_frame_idx;
+                    last_frame_idx = frame_idx;
+                    Some(finish_frame)
+                } else {
+                    None
+                }
+            },
+            None => Some(last_frame_idx),
+        };
 
-        // If we're not going to be finished soon, queue up another frame
-        if cfg.frames - frame_idx > frames_in_flight {
-            engine.submit(frame_idx_to_time(next_frame_idx))?;
+        let pos = tile_info.map(|(pos, _)| pos);
+
+        // If we've finished a frame, save it
+        if let Some(frame_idx) = finish_frame {
+            let path = format!("{}_{:04}.png", cfg.name, frame_idx);
+            write_rgb_png(cfg.width, cfg.height, &current_image, &path).context("Writing image")?;
+        }
+
+        // If we have tile data, blit it
+        if let Some(pos) = pos {
+            bosrender::tiles::blit_rgb(
+                &tile_data,
+                &mut current_image,
+                pos,
+                (cfg.width as _, cfg.height as _),
+                (tile_width as _, tile_height as _),
+            )
+        }
+
+        // Submit new work, if any
+        if let Some((pos, time, frame_idx)) = work_order.next() {
+            tile_tracker.push_back((pos, frame_idx));
+            engine.submit_tile(time, pos.0 as _, pos.1 as _)?;
+        }
+
+        // We're all done!
+        if tile_tracker.is_empty() {
+            break;
         }
     }
 
@@ -46,7 +97,6 @@ fn main() -> Result<()> {
 
     Ok(())
 }
-*/
 
 fn write_rgb_png(width: u32, height: u32, data: &[u8], path: &str) -> Result<()> {
     let file = File::create(&path).with_context(|| format!("Failed to create image {}", path))?;

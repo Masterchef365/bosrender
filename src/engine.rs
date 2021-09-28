@@ -334,8 +334,8 @@ fn load_fragment_shader(path: &Path) -> Result<Vec<u8>> {
     );
 
     // TODO: Include this _in_ the error!
-    println!("Printing doctored source:");
     if binary_result.is_err() {
+        println!("Printing doctored source:");
         for (idx, line) in source.lines().enumerate() {
             println!("{:3}: {}", idx+1, line);
         }

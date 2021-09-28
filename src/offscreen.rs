@@ -39,6 +39,13 @@ pub struct OffScreen {
 
 const COLOR_FORMAT: vk::Format = vk::Format::R8G8B8A8_SRGB;
 
+pub fn calc_tile_dims(cfg: &Settings) -> (u32, u32) {
+    (
+        cfg.tile_width.unwrap_or(cfg.width),
+        cfg.tile_height.unwrap_or(cfg.height),
+    )
+}
+
 impl OffScreen {
     pub fn new(cfg: Settings) -> Result<Self> {
         let info = AppInfo::default()
@@ -70,9 +77,10 @@ impl OffScreen {
         let engine = Engine::new(core.clone(), cfg.frames_in_flight, &cfg.shader, render_pass)?;
 
         // Output extent
+        let (width, height) = calc_tile_dims(&cfg);
         let fb_extent = vk::Extent2DBuilder::new()
-            .width(cfg.tile_width.unwrap_or(cfg.width))
-            .height(cfg.tile_height.unwrap_or(cfg.height))
+            .width(width)
+            .height(height)
             .build();
 
         // Framebuffer size
