@@ -44,7 +44,6 @@ fn main() -> Result<()> {
 
     loop {
         // Download the most recently rendered tile
-        let tile_data = engine.download_frame().context("Downloading frame")?;
         let tile_info = tile_tracker.pop_front();
 
         dbg!(tile_info, last_frame_idx);
@@ -72,6 +71,7 @@ fn main() -> Result<()> {
 
         // If we have tile data, blit it
         if let Some(pos) = pos {
+            let tile_data = engine.download_frame().context("Downloading frame")?;
             bosrender::tiles::blit_rgb(
                 &tile_data,
                 &mut current_image,
@@ -85,11 +85,11 @@ fn main() -> Result<()> {
         if let Some((pos, time, frame_idx)) = work_order.next() {
             tile_tracker.push_back((pos, frame_idx));
             engine.submit_tile(time, pos.0 as _, pos.1 as _)?;
-        }
-
-        // We're all done!
-        if tile_tracker.is_empty() {
-            break;
+        } else {
+            // There are no frames in flight and we've got no more tiles to submit. Finish!
+            if finish_frame.is_some() && tile_tracker.is_empty() {
+                break;
+            }
         }
     }
 
