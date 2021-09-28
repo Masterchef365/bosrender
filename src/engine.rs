@@ -323,8 +323,6 @@ fn load_fragment_shader(path: &Path) -> Result<Vec<u8>> {
 
     let source = doctor_source(source);
 
-    //println!("{}", source);
-
     let mut compiler = shaderc::Compiler::new().context("Could not find shaderc compiler")?;
 
     let mut options = shaderc::CompileOptions::new().unwrap();
@@ -336,10 +334,22 @@ fn load_fragment_shader(path: &Path) -> Result<Vec<u8>> {
         path.to_str().expect("Non-utf8 shader name"), 
         "main", 
         Some(&options)
-    )
-    .context("Failed to compile shader")?;
+    );
 
-    Ok(binary_result.as_binary_u8().to_vec())
+    // TODO: Include this _in_ the error!
+    println!("Printing doctored source:");
+    if binary_result.is_err() {
+        for (idx, line) in source.lines().enumerate() {
+            println!("{:3}: {}", idx+1, line);
+        }
+    }
+    
+    Ok(
+        binary_result
+            .context("Failed to compile shader")?
+            .as_binary_u8()
+            .to_vec()
+    )
 }
 
 #[cfg(not(feature = "shaderc"))]
@@ -348,14 +358,15 @@ fn load_fragment_shader(path: &Path) -> Result<Vec<u8>> {
 }
 
 fn doctor_source(source: String) -> String {
-    "#version 450
-    layout(binding = 0) uniform BosRenderSceneData {
-        float resolution_x;
-        float resolution_y;
-        float u_time;
-    };
-    layout(location = 0) out vec4 bos_render_output_color;
-    vec2 u_resolution = vec2(resolution_x, resolution_y);"
+"#version 450
+layout(binding = 0) uniform BosRenderSceneData {
+    float resolution_x;
+    float resolution_y;
+    float u_time;
+};
+layout(location = 0) out vec4 bos_render_output_color;
+vec2 u_resolution = vec2(resolution_x, resolution_y);
+"
     .to_string()
         + &source
             .replace("uniform vec2 u_resolution;", "")
