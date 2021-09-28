@@ -18,7 +18,7 @@ fn main() -> Result<()> {
     let (tile_width, tile_height) = bosrender::offscreen::calc_tile_dims(&cfg);
 
     let work_order: Vec<((usize, usize), f32, usize)> = (cfg.first_frame..).take(cfg.frames).map(|frame_idx| {
-        let time = cfg.rate * (frame_idx + cfg.first_frame) as f32;
+        let time = cfg.rate * frame_idx as f32;
         bosrender::tiles::tiles(
             (cfg.width as _, cfg.height as _),
             (tile_width as _, tile_height as _),
@@ -69,6 +69,10 @@ fn main() -> Result<()> {
             write_rgb_png(cfg.width, cfg.height, &current_image, &path).context("Writing image")?;
         }
 
+        if tile_info.is_none() {
+            break;
+        }
+
         // If we have tile data, blit it
         if let Some(pos) = pos {
             let tile_data = engine.download_frame().context("Downloading frame")?;
@@ -86,10 +90,6 @@ fn main() -> Result<()> {
             tile_tracker.push_back((pos, frame_idx));
             engine.submit_tile(time, pos.0 as _, pos.1 as _)?;
         } else {
-            // There are no frames in flight and we've got no more tiles to submit. Finish!
-            if finish_frame.is_some() && tile_tracker.is_empty() {
-                break;
-            }
         }
     }
 

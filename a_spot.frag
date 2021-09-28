@@ -9,11 +9,11 @@ vec3 pixel(vec2 pos) {
     vec2 st = ((pos * 2. - 1.)/min(u_resolution.x, u_resolution.y));
     vec2 q = vec2(0.);
     vec3 g = vec3(0.);
-    const int steps = 149;
+    const int steps = 249;
     for (int i = 0; i < steps; i++) { 
         float m = float(i);
     	q += cos(st * vec2(2. - m, 1.720 * m) + q.yx);
-        q = q + dot(q, vec2(-0.800,u_time / 10));
+        q = q + dot(q, vec2(u_time / 5.,u_time / 10.));
         float s = float(i)/float(steps);
         if (smoothstep(0., 0.5, abs(q.x) + abs(q.y)) < 0.1) {
             g += mix(
@@ -26,7 +26,7 @@ vec3 pixel(vec2 pos) {
 }
 
 void main() {
-    const int AA_DIVS = 5;
+    const int AA_DIVS = 2;
     const int AA_WIDTH = AA_DIVS*2+1;
     vec3 color = vec3(0.);
  	for (int x = -AA_DIVS; x <= AA_DIVS; x++) {
