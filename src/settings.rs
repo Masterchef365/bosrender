@@ -44,5 +44,13 @@ pub struct Settings {
 
     /// Enable validation layers
     #[structopt(long)]
-    pub validation: bool
+    pub validation: bool,
+
+    /// Tile width
+    #[structopt(long)]
+    pub tile_width: Option<u32>,
+
+    /// Tile height
+    #[structopt(long)]
+    pub tile_height: Option<u32>,
 }

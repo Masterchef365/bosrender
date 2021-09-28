@@ -31,6 +31,8 @@ pub struct OffScreen {
     available_indices: Vec<usize>,
     command_buffers: Vec<vk::CommandBuffer>,
 
+    cfg: Settings,
+
     engine: Engine,
     core: SharedCore,
 }
@@ -65,12 +67,12 @@ impl OffScreen {
         let render_pass = create_render_pass(&core)?;
 
         // Create engine
-        let engine = Engine::new(core.clone(), cfg.clone(), render_pass)?;
+        let engine = Engine::new(core.clone(), cfg.frames_in_flight, &cfg.shader, render_pass)?;
 
         // Output extent
         let fb_extent = vk::Extent2DBuilder::new()
-            .width(cfg.width)
-            .height(cfg.height)
+            .width(cfg.tile_width.unwrap_or(cfg.width))
+            .height(cfg.tile_height.unwrap_or(cfg.height))
             .build();
 
         // Framebuffer size
@@ -205,6 +207,7 @@ impl OffScreen {
             fb_size_bytes,
             frame_indices_in_flight: VecDeque::new(),
             available_indices: (0..cfg.frames_in_flight).collect(),
+            cfg,
             core,
             command_buffers,
             command_pool,
@@ -212,11 +215,12 @@ impl OffScreen {
         })
     }
 
-    pub fn submit(&mut self, time: f32) -> Result<()> {
-        let cfg = self.engine.cfg();
+    pub fn submit_tile(&mut self, time: f32, offset_x: i32, offset_y: i32) -> Result<()> {
         let scene = SceneData {
-            resolution_x: cfg.width as f32,
-            resolution_y: cfg.height as f32,
+            offset_x,
+            offset_y,
+            resolution_x: self.cfg.width as f32,
+            resolution_y: self.cfg.height as f32,
             time,
         };
 

@@ -8,6 +8,11 @@ use std::io::BufWriter;
 use std::fs::File;
 
 fn main() -> Result<()> {
+    todo!()
+}
+
+/*
+fn main() -> Result<()> {
     let cfg = Settings::from_args();
 
     let frames_in_flight = 3;
@@ -41,6 +46,7 @@ fn main() -> Result<()> {
 
     Ok(())
 }
+*/
 
 fn write_rgb_png(width: u32, height: u32, data: &[u8], path: &str) -> Result<()> {
     let file = File::create(&path).with_context(|| format!("Failed to create image {}", path))?;

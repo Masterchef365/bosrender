@@ -7,7 +7,6 @@ use std::path::Path;
 static VERTEX_SHADER_SPV: &[u8] = include_bytes!("shaders/builtin.vert.spv");
 
 pub struct Engine {
-    cfg: Settings,
     pipeline: vk::Pipeline,
     pipeline_layout: vk::PipelineLayout,
     scene_ubo: FrameDataUbo<SceneData>,
@@ -20,6 +19,8 @@ pub struct Engine {
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]
 pub struct SceneData {
+    pub offset_x: i32,
+    pub offset_y: i32,
     pub resolution_x: f32,
     pub resolution_y: f32,
     pub time: f32,
@@ -29,14 +30,15 @@ pub struct SceneData {
 impl Engine {
     pub fn new(
         core: SharedCore, 
-        cfg: Settings, 
+        frames_in_flight: usize,
+        shader_path: &Path,
         render_pass: vk::RenderPass,
     ) -> Result<Self> {
         // Load fragment shader
-        let fragment_spv = load_fragment_shader(&cfg.shader)?;
+        let fragment_spv = load_fragment_shader(shader_path)?;
 
         // Scene data
-        let scene_ubo = FrameDataUbo::new(core.clone(), cfg.frames_in_flight)?;
+        let scene_ubo = FrameDataUbo::new(core.clone(), frames_in_flight)?;
 
         // Create descriptor set layout
         const FRAME_DATA_BINDING: u32 = 0;
@@ -67,21 +69,21 @@ impl Engine {
         let pool_sizes = [
             vk::DescriptorPoolSizeBuilder::new()
                 ._type(vk::DescriptorType::UNIFORM_BUFFER)
-                .descriptor_count(cfg.frames_in_flight as _),
+                .descriptor_count(frames_in_flight as _),
             vk::DescriptorPoolSizeBuilder::new()
                 ._type(vk::DescriptorType::COMBINED_IMAGE_SAMPLER)
-                .descriptor_count(cfg.frames_in_flight as _),
+                .descriptor_count(frames_in_flight as _),
         ];
 
         let create_info = vk::DescriptorPoolCreateInfoBuilder::new()
             .pool_sizes(&pool_sizes)
-            .max_sets((cfg.frames_in_flight * 2) as _);
+            .max_sets((frames_in_flight * 2) as _);
 
         let descriptor_pool =
             unsafe { core.device.create_descriptor_pool(&create_info, None, None) }.result()?;
 
         // Create descriptor sets
-        let layouts = vec![descriptor_set_layout; cfg.frames_in_flight];
+        let layouts = vec![descriptor_set_layout; frames_in_flight];
         let create_info = vk::DescriptorSetAllocateInfoBuilder::new()
             .descriptor_pool(descriptor_pool)
             .set_layouts(&layouts);
@@ -132,7 +134,6 @@ impl Engine {
         )?;
 
         Ok(Self {
-            cfg,
             descriptor_set_layout,
             descriptor_sets,
             descriptor_pool,
@@ -170,10 +171,6 @@ impl Engine {
         }
 
         Ok(())
-    }
-
-    pub fn cfg(&self) -> &Settings {
-        &self.cfg
     }
 }
 
@@ -360,18 +357,22 @@ fn load_fragment_shader(path: &Path) -> Result<Vec<u8>> {
 fn doctor_source(source: String) -> String {
 "#version 450
 layout(binding = 0) uniform BosRenderSceneData {
+    int offset_x;
+    int offset_y;
     float resolution_x;
     float resolution_y;
     float u_time;
 };
 layout(location = 0) out vec4 bos_render_output_color;
 vec2 u_resolution = vec2(resolution_x, resolution_y);
+vec4 bos_render_input_coord = vec4(offset_x, offset_y, 0, 0) + gl_FragCoord;
 "
     .to_string()
         + &source
             .replace("uniform vec2 u_resolution;", "")
             .replace("uniform vec2 u_mouse;", "")
             .replace("uniform float u_time;", "")
+            .replace("gl_FragCoord", "bos_render_input_coord")
             .replace("gl_FragColor", "bos_render_output_color")
 
 }
