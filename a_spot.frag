@@ -19,7 +19,7 @@ vec3 pixel(vec2 pos) {
     for (int i = 0; i < steps; i++) { 
         float m = float(i);
     	q += cos(st * vec2(0.280 - m, 1.720 * m) + q.yx);
-        q = q + dot(q, vec2(fract(u_time / 40.) - .5, -1.192));
+        q = q + dot(q, vec2(fract(u_time / 50.) * 1.5 - .5, -1.192));
         float s = float(i)/float(steps);
         if (smoothstep(0., 0.5, abs(q.x) + abs(q.y)) < 0.1) {
             g += 1.;
@@ -42,3 +42,4 @@ void main() {
     color = hsv2rgb(color);
     gl_FragColor = vec4(color, 1.);
 }
+
