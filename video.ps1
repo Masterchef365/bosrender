@@ -1,0 +1,1 @@
+ffmpeg -i out_%4d.png -framerate 60 out.mp4
