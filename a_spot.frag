@@ -5,24 +5,27 @@ uniform vec2 u_resolution;
 uniform vec2 u_mouse;
 uniform float u_time;
 
+vec3 hsv2rgb(vec3 c) {
+  vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+  vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+  return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+}
+
 vec3 pixel(vec2 pos) {
     vec2 st = ((pos * 2. - 1.)/min(u_resolution.x, u_resolution.y));
     vec2 q = vec2(0.);
-    vec3 g = vec3(0.);
-    const int steps = 249;
+    float g = 0.;
+    const int steps = 80;
     for (int i = 0; i < steps; i++) { 
         float m = float(i);
-    	q += cos(st * vec2(2. - m, 1.720 * m) + q.yx);
-        q = q + dot(q, vec2(u_time / 5.,u_time / 10.));
+    	q += cos(st * vec2(0.280 - m, 1.720 * m) + q.yx);
+        q = q + dot(q, vec2(fract(u_time / 40.) - .5, -1.192));
         float s = float(i)/float(steps);
         if (smoothstep(0., 0.5, abs(q.x) + abs(q.y)) < 0.1) {
-            g += mix(
-            vec3(0.948,0.383,1.000) * 1., 
-            vec3(0.259,0.608,1.000) * 3., 
-            s) * 3.;
+            g += 1.;
         }
     }
-    return vec3(g);
+    return vec3(normalize(q).y, 1.,g);
 }
 
 void main() {
@@ -36,5 +39,6 @@ void main() {
         }
     }
     color /= float(AA_WIDTH*AA_WIDTH);
+    color = hsv2rgb(color);
     gl_FragColor = vec4(color, 1.);
 }
