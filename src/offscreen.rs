@@ -37,7 +37,7 @@ pub struct OffScreen {
     core: SharedCore,
 }
 
-const COLOR_FORMAT: vk::Format = vk::Format::R8G8B8A8_SRGB;
+const COLOR_FORMAT: vk::Format = vk::Format::R8G8B8A8_UNORM;
 
 pub fn calc_tile_dims(cfg: &Settings) -> (u32, u32) {
     (

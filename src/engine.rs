@@ -1,6 +1,5 @@
 use watertender::prelude::*;
 use anyhow::{Result, Context};
-use crate::settings::Settings;
 use std::ffi::CString;
 use std::path::Path;
 
