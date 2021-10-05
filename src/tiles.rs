@@ -15,6 +15,8 @@ pub fn tiles(
     tiles
 }
 
+const BYTES_PER_PIXEL: usize = 3;
+
 /// Blit RGB tiles
 pub fn blit_rgb(
     src: &[u8],
@@ -23,8 +25,6 @@ pub fn blit_rgb(
     (image_width, image_height): (usize, usize),
     (tile_width, tile_height): (usize, usize),
 ) {
-    const BYTES_PER_PIXEL: usize = 3;
-
     debug_assert_eq!(src.len() % BYTES_PER_PIXEL, 0);
 
     debug_assert_eq!(src.len() % tile_height, 0);
@@ -56,26 +56,26 @@ mod tests {
         let output_dims = (100, 200);
         let tile_dims = (33, 33);
 
-        let mut output_data = vec![0; output_dims.0 * output_dims.1 * 3];
+        let mut output_data = vec![0; output_dims.0 * output_dims.1 * BYTES_PER_PIXEL];
 
         for pos in tiles(output_dims, tile_dims) {
             let (x, y) = dbg!(pos);
-            let tile_data = (0..tile_dims.0 * tile_dims.1 * 3)
+            let tile_data = (0..tile_dims.0 * tile_dims.1 * BYTES_PER_PIXEL)
                 .map(|_| (x + y) as u8)
                 .collect::<Vec<u8>>();
 
             blit_rgb(&tile_data, &mut output_data, pos, output_dims, tile_dims);
         }
 
-        let mut expected_data = vec![0; output_dims.0 * output_dims.1 * 3];
+        let mut expected_data = vec![0; output_dims.0 * output_dims.1 * BYTES_PER_PIXEL];
 
         for (y, row) in expected_data
-            .chunks_exact_mut(output_dims.0 * 3)
+            .chunks_exact_mut(output_dims.0 * BYTES_PER_PIXEL)
             .enumerate()
         {
             for (x, data) in row.iter_mut().enumerate() {
                 let (tile_width, tile_height) = tile_dims;
-                let x = ((x / 3) / tile_width) * tile_width;
+                let x = ((x / BYTES_PER_PIXEL) / tile_width) * tile_width;
                 let y = (y / tile_height) * tile_height;
 
                 let val = (x + y) as u8;
@@ -91,26 +91,26 @@ mod tests {
         let output_dims = (100, 350);
         let tile_dims = (33, 83);
 
-        let mut output_data = vec![0; output_dims.0 * output_dims.1 * 3];
+        let mut output_data = vec![0; output_dims.0 * output_dims.1 * BYTES_PER_PIXEL];
 
         for pos in tiles(output_dims, tile_dims) {
             let (x, y) = dbg!(pos);
-            let tile_data = (0..tile_dims.0 * tile_dims.1 * 3)
+            let tile_data = (0..tile_dims.0 * tile_dims.1 * BYTES_PER_PIXEL)
                 .map(|_| (x + y) as u8)
                 .collect::<Vec<u8>>();
 
             blit_rgb(&tile_data, &mut output_data, pos, output_dims, tile_dims);
         }
 
-        let mut expected_data = vec![0; output_dims.0 * output_dims.1 * 3];
+        let mut expected_data = vec![0; output_dims.0 * output_dims.1 * BYTES_PER_PIXEL];
 
         for (y, row) in expected_data
-            .chunks_exact_mut(output_dims.0 * 3)
+            .chunks_exact_mut(output_dims.0 * BYTES_PER_PIXEL)
             .enumerate()
         {
             for (x, data) in row.iter_mut().enumerate() {
                 let (tile_width, tile_height) = tile_dims;
-                let x = ((x / 3) / tile_width) * tile_width;
+                let x = ((x / BYTES_PER_PIXEL) / tile_width) * tile_width;
                 let y = (y / tile_height) * tile_height;
 
                 let val = (x + y) as u8;
