@@ -15,19 +15,26 @@ struct Job {
 }
 
 fn main() -> Result<()> {
+    // Load configuration
     let cfg = Settings::from_args();
 
+    // Line displays
+    let mut line_display = RealtimeDisplay::from_fps(60.);
+    line_display.status_line("Initializing...");
+
+    // Initialize engine
     let mut engine = OffScreen::new(cfg.clone())?;
 
-    let mut line_display = RealtimeDisplay::from_fps(60.);
-
+    // Calculate tile dimensions
     let (tile_width, tile_height) = bosrender::offscreen::calc_tile_dims(&cfg);
 
+    // Tiles which make up the destination image
     let tiles = bosrender::tiles::tiles(
         (cfg.width as _, cfg.height as _),
         (tile_width as _, tile_height as _),
     );
 
+    // Determine the total work to be done (all tiles of all frames)
     let work_order: Vec<Job> = (cfg.first_frame..)
         .take(cfg.frames)
         .map(|frame_idx| {
@@ -71,6 +78,7 @@ fn main() -> Result<()> {
             ));
         }
 
+        // Determine if a frame was finished, and if so at what frame index
         let finish_frame = match &tile_info {
             Some(job) => {
                 if job.frame_idx != last_frame_idx {
@@ -151,7 +159,7 @@ impl RealtimeDisplay {
 
     pub fn from_interval(refresh_interval: Duration) -> Self {
         Self {
-            last_update: Instant::now(),
+            last_update: Instant::now() - refresh_interval,
             refresh_interval,
         }
     }

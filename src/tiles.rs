@@ -1,3 +1,4 @@
+/// Produces the coordinates of top-left corners of tiles for the given image and tile dimensions
 pub fn tiles(
     (image_width, image_height): (usize, usize),
     (tile_width, tile_height): (usize, usize),
@@ -15,32 +16,33 @@ pub fn tiles(
     tiles
 }
 
+/// Bytes per pixel; used in stride calculation for images
 const BYTES_PER_PIXEL: usize = 3;
 
-/// Blit RGB tiles
+/// Blit from `src` to `(x, y)` in `dest` with the given dimensions of each. Assumes RGB at 8BPP
 pub fn blit_rgb(
     src: &[u8],
     dest: &mut [u8],
     (x, y): (usize, usize),
-    (image_width, image_height): (usize, usize),
-    (tile_width, tile_height): (usize, usize),
+    (dest_width, dest_height): (usize, usize),
+    (src_width, src_height): (usize, usize),
 ) {
     debug_assert_eq!(src.len() % BYTES_PER_PIXEL, 0);
 
-    debug_assert_eq!(src.len() % tile_height, 0);
-    debug_assert_eq!(dest.len() % image_height, 0);
+    debug_assert_eq!(src.len() % src_height, 0);
+    debug_assert_eq!(dest.len() % dest_height, 0);
 
-    debug_assert_eq!(src.len() % tile_width, 0);
-    debug_assert_eq!(dest.len() % image_width, 0);
+    debug_assert_eq!(src.len() % src_width, 0);
+    debug_assert_eq!(dest.len() % dest_width, 0);
 
-    debug_assert_eq!(src.len() / tile_width, tile_height * BYTES_PER_PIXEL);
-    debug_assert_eq!(dest.len() / image_width, image_height * BYTES_PER_PIXEL);
+    debug_assert_eq!(src.len() / src_width, src_height * BYTES_PER_PIXEL);
+    debug_assert_eq!(dest.len() / dest_width, dest_height * BYTES_PER_PIXEL);
 
     for (src_row, dest_row) in src
-        .chunks_exact(BYTES_PER_PIXEL * tile_width)
-        .zip(dest.chunks_exact_mut(BYTES_PER_PIXEL * image_width).skip(y))
+        .chunks_exact(BYTES_PER_PIXEL * src_width)
+        .zip(dest.chunks_exact_mut(BYTES_PER_PIXEL * dest_width).skip(y))
     {
-        let length_pixels = (x + tile_width).min(image_width) - x;
+        let length_pixels = (x + src_width).min(dest_width) - x;
 
         dest_row[x * BYTES_PER_PIXEL..][..length_pixels * BYTES_PER_PIXEL]
             .copy_from_slice(&src_row[..length_pixels * BYTES_PER_PIXEL])
