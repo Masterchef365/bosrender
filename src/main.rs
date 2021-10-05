@@ -61,15 +61,13 @@ fn main() -> Result<()> {
 
         // Display the status line
         if let Some(job) = &tile_info {
-            line_display.status_line(
-                format_args!(
-                    "Frame {}/{}, Tile {}/{}",
-                    job.frame_idx + 1,
-                    cfg.frames,
-                    job.tile_idx + 1,
-                    tiles.len()
-                )
-            );
+            line_display.status_line(format_args!(
+                "Frame {}/{}, Tile {}/{}",
+                job.frame_idx + 1,
+                cfg.frames,
+                job.tile_idx + 1,
+                tiles.len()
+            ));
         }
 
         let finish_frame = match &tile_info {

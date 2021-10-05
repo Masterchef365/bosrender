@@ -120,5 +120,4 @@ mod tests {
 
         assert_eq!(output_data, expected_data);
     }
-
 }
