@@ -1,7 +1,7 @@
-use watertender::prelude::*;
-use anyhow::{Result, Context};
+use anyhow::{Context, Result};
 use std::ffi::CString;
 use std::path::Path;
+use watertender::prelude::*;
 
 static VERTEX_SHADER_SPV: &[u8] = include_bytes!("shaders/builtin.vert.spv");
 
@@ -28,7 +28,7 @@ pub struct SceneData {
 
 impl Engine {
     pub fn new(
-        core: SharedCore, 
+        core: SharedCore,
         frames_in_flight: usize,
         shader_path: &Path,
         render_pass: vk::RenderPass,
@@ -52,7 +52,7 @@ impl Engine {
                 .binding(TEX_DATA_BINDING)
                 .descriptor_type(vk::DescriptorType::COMBINED_IMAGE_SAMPLER)
                 .descriptor_count(1)
-                .stage_flags(vk::ShaderStageFlags::FRAGMENT)
+                .stage_flags(vk::ShaderStageFlags::FRAGMENT),
         ];
 
         let descriptor_set_layout_ci =
@@ -93,14 +93,12 @@ impl Engine {
         // Write descriptor sets
         for (frame, &descriptor_set) in descriptor_sets.iter().enumerate() {
             let frame_data_bi = [scene_ubo.descriptor_buffer_info(frame)];
-            let writes = [
-                vk::WriteDescriptorSetBuilder::new()
-                    .buffer_info(&frame_data_bi)
-                    .descriptor_type(vk::DescriptorType::UNIFORM_BUFFER)
-                    .dst_set(descriptor_set)
-                    .dst_binding(FRAME_DATA_BINDING)
-                    .dst_array_element(0),
-            ];
+            let writes = [vk::WriteDescriptorSetBuilder::new()
+                .buffer_info(&frame_data_bi)
+                .descriptor_type(vk::DescriptorType::UNIFORM_BUFFER)
+                .dst_set(descriptor_set)
+                .dst_binding(FRAME_DATA_BINDING)
+                .dst_array_element(0)];
 
             unsafe {
                 core.device.update_descriptor_sets(&writes, &[]);
@@ -143,12 +141,14 @@ impl Engine {
         })
     }
 
-    pub fn write_commands(&mut self, command_buffer: vk::CommandBuffer, frame: usize, scene: &SceneData) -> Result<()> {
+    pub fn write_commands(
+        &mut self,
+        command_buffer: vk::CommandBuffer,
+        frame: usize,
+        scene: &SceneData,
+    ) -> Result<()> {
         // TODO: Factor this out?
-        self.scene_ubo.upload(
-            frame,
-            scene,
-        )?;
+        self.scene_ubo.upload(frame, scene)?;
 
         unsafe {
             self.core.device.cmd_bind_descriptor_sets(
@@ -246,8 +246,7 @@ pub fn shader(
         .dst_color_blend_factor(vk::BlendFactor::SRC_ALPHA)
         .alpha_blend_op(vk::BlendOp::ADD)
         .src_alpha_blend_factor(vk::BlendFactor::ONE)
-        .dst_alpha_blend_factor(vk::BlendFactor::ONE)
-    ];
+        .dst_alpha_blend_factor(vk::BlendFactor::ONE)];
     let color_blending = vk::PipelineColorBlendStateCreateInfoBuilder::new()
         .logic_op_enable(false)
         .attachments(&color_blend_attachments);
@@ -305,9 +304,15 @@ impl Drop for Engine {
     fn drop(&mut self) {
         unsafe {
             self.core.device.device_wait_idle().unwrap();
-            self.core.device.destroy_descriptor_pool(Some(self.descriptor_pool), None);
-            self.core.device.destroy_descriptor_set_layout(Some(self.descriptor_set_layout), None);
-            self.core.device.destroy_pipeline_layout(Some(self.pipeline_layout), None);
+            self.core
+                .device
+                .destroy_descriptor_pool(Some(self.descriptor_pool), None);
+            self.core
+                .device
+                .destroy_descriptor_set_layout(Some(self.descriptor_set_layout), None);
+            self.core
+                .device
+                .destroy_pipeline_layout(Some(self.pipeline_layout), None);
             self.core.device.destroy_pipeline(Some(self.pipeline), None);
         }
     }
@@ -315,7 +320,8 @@ impl Drop for Engine {
 
 #[cfg(feature = "shaderc")]
 fn load_fragment_shader(path: &Path) -> Result<Vec<u8>> {
-    let source = std::fs::read_to_string(path).with_context(|| format!("Failed to find shader source at \"{}\"", path.display()))?;
+    let source = std::fs::read_to_string(path)
+        .with_context(|| format!("Failed to find shader source at \"{}\"", path.display()))?;
 
     let source = doctor_source(source);
 
@@ -325,27 +331,25 @@ fn load_fragment_shader(path: &Path) -> Result<Vec<u8>> {
     options.add_macro_definition("EP", Some("main"));
 
     let binary_result = compiler.compile_into_spirv(
-        &source, 
+        &source,
         shaderc::ShaderKind::Fragment,
-        path.to_str().expect("Non-utf8 shader name"), 
-        "main", 
-        Some(&options)
+        path.to_str().expect("Non-utf8 shader name"),
+        "main",
+        Some(&options),
     );
 
     // TODO: Include this _in_ the error!
     if binary_result.is_err() {
         println!("Printing doctored source:");
         for (idx, line) in source.lines().enumerate() {
-            println!("{:3}: {}", idx+1, line);
+            println!("{:3}: {}", idx + 1, line);
         }
     }
-    
-    Ok(
-        binary_result
-            .context("Failed to compile shader")?
-            .as_binary_u8()
-            .to_vec()
-    )
+
+    Ok(binary_result
+        .context("Failed to compile shader")?
+        .as_binary_u8()
+        .to_vec())
 }
 
 #[cfg(not(feature = "shaderc"))]
@@ -354,7 +358,7 @@ fn load_fragment_shader(path: &Path) -> Result<Vec<u8>> {
 }
 
 fn doctor_source(source: String) -> String {
-"#version 450
+    "#version 450
 layout(binding = 0) uniform BosRenderSceneData {
     int offset_x;
     int offset_y;
@@ -373,5 +377,4 @@ vec4 bos_render_input_coord = vec4(offset_x, offset_y, 0, 0) + gl_FragCoord;
             .replace("uniform float u_time;", "")
             .replace("gl_FragCoord", "bos_render_input_coord")
             .replace("gl_FragColor", "bos_render_output_color")
-
 }

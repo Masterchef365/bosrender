@@ -17,24 +17,20 @@ pub fn tiles(
 
 /// Blit RGB tiles
 pub fn blit_rgb(
-    src: &[u8], 
-    dest: &mut [u8], 
+    src: &[u8],
+    dest: &mut [u8],
     (x, y): (usize, usize),
     (image_width, image_height): (usize, usize),
-    (tile_width, tile_height): (usize, usize)
+    (tile_width, tile_height): (usize, usize),
 ) {
     const BYTES_PER_PIXEL: usize = 3;
     for (src_row, dest_row) in src
         .chunks_exact(BYTES_PER_PIXEL * tile_width)
-        .zip(
-            dest
-            .chunks_exact_mut(BYTES_PER_PIXEL * image_width)
-            .skip(y)
-        ) {
+        .zip(dest.chunks_exact_mut(BYTES_PER_PIXEL * image_width).skip(y))
+    {
         let length_pixels = (x + tile_width).min(image_width) - x;
 
-        dest_row[x * BYTES_PER_PIXEL..]
-            [..length_pixels * BYTES_PER_PIXEL]
+        dest_row[x * BYTES_PER_PIXEL..][..length_pixels * BYTES_PER_PIXEL]
             .copy_from_slice(&src_row[..length_pixels * BYTES_PER_PIXEL])
     }
 }
@@ -56,18 +52,15 @@ mod tests {
                 .map(|_| (x + y) as u8)
                 .collect::<Vec<u8>>();
 
-            blit_rgb(
-                &tile_data,
-                &mut output_data,
-                pos,
-                output_dims,
-                tile_dims,
-            );
+            blit_rgb(&tile_data, &mut output_data, pos, output_dims, tile_dims);
         }
 
         let mut expected_data = vec![0; output_dims.0 * output_dims.1 * 3];
 
-        for (y, row) in expected_data.chunks_exact_mut(output_dims.0 * 3).enumerate() {
+        for (y, row) in expected_data
+            .chunks_exact_mut(output_dims.0 * 3)
+            .enumerate()
+        {
             for (x, data) in row.iter_mut().enumerate() {
                 let (tile_width, tile_height) = tile_dims;
                 let x = ((x / 3) / tile_width) * tile_width;

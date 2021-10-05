@@ -1,12 +1,12 @@
 mod frame_counter;
-use frame_counter::FrameCounter;
-use structopt::StructOpt;
+use anyhow::{Context, Result};
 use bosrender::offscreen::OffScreen;
 use bosrender::settings::Settings;
-use anyhow::{Result, Context};
-use std::io::BufWriter;
-use std::fs::File;
+use frame_counter::FrameCounter;
 use std::collections::VecDeque;
+use std::fs::File;
+use std::io::BufWriter;
+use structopt::StructOpt;
 
 fn main() -> Result<()> {
     let cfg = Settings::from_args();
@@ -17,17 +17,19 @@ fn main() -> Result<()> {
 
     let (tile_width, tile_height) = bosrender::offscreen::calc_tile_dims(&cfg);
 
-    let work_order: Vec<((usize, usize), f32, usize)> = (cfg.first_frame..).take(cfg.frames).map(|frame_idx| {
-        let time = cfg.rate * (frame_idx + cfg.first_frame) as f32;
-        bosrender::tiles::tiles(
-            (cfg.width as _, cfg.height as _),
-            (tile_width as _, tile_height as _),
-        )
-        .into_iter()
-        .map(move |pos| (pos, time, frame_idx))
-    })
-    .flatten()
-    .collect();
+    let work_order: Vec<((usize, usize), f32, usize)> = (cfg.first_frame..)
+        .take(cfg.frames)
+        .map(|frame_idx| {
+            let time = cfg.rate * (frame_idx + cfg.first_frame) as f32;
+            bosrender::tiles::tiles(
+                (cfg.width as _, cfg.height as _),
+                (tile_width as _, tile_height as _),
+            )
+            .into_iter()
+            .map(move |pos| (pos, time, frame_idx))
+        })
+        .flatten()
+        .collect();
 
     let mut work_order = work_order.into_iter();
 
@@ -57,7 +59,7 @@ fn main() -> Result<()> {
                 } else {
                     None
                 }
-            },
+            }
             None => Some(last_frame_idx),
         };
 
@@ -101,7 +103,7 @@ fn main() -> Result<()> {
 fn write_rgb_png(width: u32, height: u32, data: &[u8], path: &str) -> Result<()> {
     let file = File::create(&path).with_context(|| format!("Failed to create image {}", path))?;
     let ref mut w = BufWriter::new(file);
-    
+
     let mut encoder = png::Encoder::new(w, width, height);
     encoder.set_color(png::ColorType::Rgb);
     encoder.set_depth(png::BitDepth::Eight);

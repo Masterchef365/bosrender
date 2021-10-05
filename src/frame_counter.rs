@@ -1,12 +1,11 @@
-use std::time::Instant;
 use std::io::Write;
+use std::time::Instant;
 
 /// Frame counter, an iterator which shows it's progress in stdout
 pub struct FrameCounter {
     last_time: Option<Instant>,
     idx: usize,
     n: usize,
-    
 }
 
 impl FrameCounter {
@@ -48,4 +47,3 @@ impl Iterator for FrameCounter {
         Some(ret)
     }
 }
-

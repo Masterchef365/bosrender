@@ -191,8 +191,7 @@ impl OffScreen {
             let framebuffer =
                 unsafe { core.device.create_framebuffer(&create_info, None, None) }.result()?;
 
-            let ci = vk::FenceCreateInfoBuilder::new()
-                .build();
+            let ci = vk::FenceCreateInfoBuilder::new().build();
             let fence = unsafe { core.device.create_fence(&ci, None, None).result()? };
 
             let frame = Frame {
@@ -232,7 +231,10 @@ impl OffScreen {
             time,
         };
 
-        let frame_idx = self.available_indices.pop().expect("No more frames in flight left. Perhaps you didn't download a frame?");
+        let frame_idx = self
+            .available_indices
+            .pop()
+            .expect("No more frames in flight left. Perhaps you didn't download a frame?");
 
         let frame = &self.frames[frame_idx];
         let command_buffer = self.command_buffers[frame_idx];
@@ -328,7 +330,8 @@ impl OffScreen {
                 .device
                 .cmd_set_scissor(command_buffer, 0, &scissors);
 
-            self.engine.write_commands(command_buffer, frame_idx, &scene)?;
+            self.engine
+                .write_commands(command_buffer, frame_idx, &scene)?;
 
             self.core.device.cmd_end_render_pass(command_buffer);
 
@@ -402,16 +405,18 @@ impl OffScreen {
     }
 
     pub fn download_frame(&mut self) -> Result<Vec<u8>> {
-        let frame_idx = self.frame_indices_in_flight.pop_front().expect("Attempted to download a frame we have not finished...");
+        let frame_idx = self
+            .frame_indices_in_flight
+            .pop_front()
+            .expect("Attempted to download a frame we have not finished...");
 
         let frame = &mut self.frames[frame_idx];
-        
+
         unsafe {
-            self.core.device.wait_for_fences(
-                &[frame.fence], 
-                true, 
-                Duration::from_secs(5).as_nanos() as _
-            ).result()?
+            self.core
+                .device
+                .wait_for_fences(&[frame.fence], true, Duration::from_secs(5).as_nanos() as _)
+                .result()?
         }
 
         let mut image_data = vec![0xFFu8; self.fb_size_bytes as usize];
@@ -423,7 +428,6 @@ impl OffScreen {
         let image_data = rgba_to_rgb(image_data);
 
         Ok(image_data)
-        
     }
 }
 
@@ -504,16 +508,16 @@ impl Drop for OffScreen {
                 .device
                 .destroy_render_pass(Some(self.render_pass), None);
             for frame in self.frames.drain(..) {
-            self.core
-                .device
-                .destroy_framebuffer(Some(frame.framebuffer), None);
-            self.core
-                .device
-                .destroy_image_view(Some(frame.fb_image_view), None);
-            self.core
-                .device
-                .destroy_image_view(Some(frame.fb_depth_image_view), None);
-        }
+                self.core
+                    .device
+                    .destroy_framebuffer(Some(frame.framebuffer), None);
+                self.core
+                    .device
+                    .destroy_image_view(Some(frame.fb_image_view), None);
+                self.core
+                    .device
+                    .destroy_image_view(Some(frame.fb_depth_image_view), None);
+            }
         }
     }
 }
