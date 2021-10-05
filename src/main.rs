@@ -5,6 +5,7 @@ use std::collections::VecDeque;
 use std::fs::File;
 use std::io::BufWriter;
 use structopt::StructOpt;
+use std::time::{Duration, Instant};
 
 struct Job {
     pos: (usize, usize),
@@ -113,12 +114,18 @@ fn main() -> Result<()> {
         }
     }
 
+    println!();
     println!("Finished!");
 
     Ok(())
 }
 
 fn write_rgb_png(width: u32, height: u32, data: &[u8], path: &str) -> Result<()> {
+    debug_assert_eq!(data.len() % 3, 0);
+    debug_assert_eq!(data.len() % width as usize, 0);
+    debug_assert_eq!(data.len() % height as usize, 0);
+    debug_assert_eq!(data.len() / width as usize, height as usize);
+
     let file = File::create(&path).with_context(|| format!("Failed to create image {}", path))?;
     let ref mut w = BufWriter::new(file);
 
@@ -129,23 +136,8 @@ fn write_rgb_png(width: u32, height: u32, data: &[u8], path: &str) -> Result<()>
     let mut writer = encoder.write_header()?;
     writer.write_image_data(data)?;
 
-    /*
-    encoder.set_trns(vec!(0xFFu8, 0xFFu8, 0xFFu8, 0xFFu8));
-    encoder.set_source_gamma(png::ScaledFloat::from_scaled(45455)); // 1.0 / 2.2, scaled by 100000
-    encoder.set_source_gamma(png::ScaledFloat::new(1.0 / 2.2));     // 1.0 / 2.2, unscaled, but rounded
-    let source_chromaticities = png::SourceChromaticities::new(     // Using unscaled instantiation here
-        (0.31270, 0.32900),
-        (0.64000, 0.33000),
-        (0.30000, 0.60000),
-        (0.15000, 0.06000)
-    );
-    encoder.set_source_chromaticities(source_chromaticities);
-    */
-
     Ok(())
 }
-
-use std::time::{Duration, Instant};
 
 struct RealtimeDisplay {
     last_update: Instant,
@@ -179,6 +171,7 @@ impl RealtimeDisplay {
 
     pub fn lazy_status_line<F: FnOnce() -> T, T: std::fmt::Display>(&mut self, f: F) {
         if self.needs_update() {
+            // TODO: Make sure this works on Windows?
             print!("\r\x1b[1K{}", f());
             use std::io::Write;
             std::io::stdout().flush().unwrap();
