@@ -93,12 +93,6 @@ fn main() -> Result<()> {
             None => Some(last_frame_idx),
         };
 
-        // If we've finished a frame, save it
-        if let Some(frame_idx) = finish_frame {
-            let path = format!("{}_{:04}.png", cfg.name, frame_idx);
-            write_rgb_png(cfg.width, cfg.height, &current_image, &path).context("Writing image")?;
-        }
-
         // If we have tile data, blit it
         if let Some(job) = &tile_info {
             let tile_data = engine.download_frame().context("Downloading frame")?;
@@ -111,15 +105,21 @@ fn main() -> Result<()> {
             )
         }
 
+        // If we've finished a frame, save it
+        if let Some(frame_idx) = finish_frame {
+            let path = format!("{}_{:04}.png", cfg.name, frame_idx);
+            write_rgb_png(cfg.width, cfg.height, &current_image, &path).context("Writing image")?;
+
+            // We're completely finished
+            if frame_idx + 1 == cfg.frames + cfg.first_frame {
+                break;
+            }
+        }
+
         // Submit new work, if any
         if let Some(job) = work_order.next() {
             engine.submit_tile(job.time, job.pos.0 as _, job.pos.1 as _)?;
             tile_tracker.push_back(job);
-        } else {
-            // There are no frames in flight and we've got no more tiles to submit. Finish!
-            if finish_frame.is_some() && tile_tracker.is_empty() {
-                break;
-            }
         }
     }
 
