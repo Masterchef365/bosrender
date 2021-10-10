@@ -70,9 +70,10 @@ fn main() -> Result<()> {
         // Display the status line
         if let Some(job) = &tile_info {
             line_display.status_line(format_args!(
-                "Frame {}/{}, Tile {}/{}",
-                job.frame_idx + 1,
+                "Frame {:>4}/{:<4} (#{:<4}), Tile {:>4}/{:<4}",
+                job.frame_idx + 1 - cfg.first_frame,
                 cfg.frames,
+                job.frame_idx,
                 job.tile_idx + 1,
                 tiles.len()
             ));
