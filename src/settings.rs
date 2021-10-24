@@ -32,7 +32,7 @@ pub struct Settings {
     /// the shader path. If $f is not found in the pattern, the pattern is assumed to end with "_%f"
     #[structopt(long, value_name="pattern", default_value = "%i_%f.png")]
     */
-    #[structopt(long, short)]
+    #[structopt(long, short, default_value = "out")]
     pub name: String,
 
     /// Output directory
