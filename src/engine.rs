@@ -368,7 +368,7 @@ layout(binding = 0) uniform BosRenderSceneData {
 };
 layout(location = 0) out vec4 bos_render_output_color;
 vec2 u_resolution = vec2(resolution_x, resolution_y);
-vec4 bos_render_input_coord = vec4(offset_x, offset_y, 0, 0) + gl_FragCoord;
+vec4 bos_render_input_coord = vec4(offset_x, offset_y, 0, 0) + vec4(gl_FragCoord.x, resolution_y - gl_FragCoord.y, gl_FragCoord.zw);
 "
     .to_string()
         + &source
